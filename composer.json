@@ -1,0 +1,35 @@
+{
+    "name": "f-oris/easy-cache",
+    "description": "an easy symfony cache implement",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "F.oris",
+            "email": "us@f-oris.me"
+        }
+    ],
+    "require": {
+        "php": ">=7.1",
+        "symfony/cache": "^2.7|^3.0|^4.0",
+        "predis/predis": "^1.1"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^8.1",
+        "mockery/mockery": "^1.2",
+        "fzaninotto/faker": "^1.8"
+    },
+    "autoload": {
+        "psr-4": {
+            "Foris\\Easy\\Cache\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Foris\\Easy\\Cache\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "vendor/bin/phpunit"
+    }
+}
