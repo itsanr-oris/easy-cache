@@ -44,7 +44,7 @@ class FactoryTest extends TestCase
         $factory = new Factory();
         $config = [
             'dsn' => [
-                'memcached://localhost::11211'
+                'memcached://localhost:11211'
             ]
         ];
         $this->assertInstanceOf(MemcachedAdapter::class, $factory->make('memcached', $config));
@@ -58,7 +58,7 @@ class FactoryTest extends TestCase
     {
         $factory = new Factory();
         $config = [
-            'dsn' => 'redis://localhost::3690'
+            'dsn' => 'redis://localhost:6379'
         ];
         $this->assertInstanceOf(RedisAdapter::class, $factory->make('redis', $config));
     }
@@ -76,11 +76,11 @@ class FactoryTest extends TestCase
                 'file' => [],
                 'memcached' => [
                     'dsn' => [
-                        'memcached://localhost::11211'
+                        'memcached://localhost:11211'
                     ]
                 ],
                 'redis' => [
-                    'dsn' => 'redis://localhost::3690',
+                    'dsn' => 'redis://localhost:6379',
                 ]
             ],
         ];
