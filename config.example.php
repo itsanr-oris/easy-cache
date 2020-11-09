@@ -16,7 +16,7 @@ return [
      */
     'drivers' => [
         'file' => [
-            'path' => __DIR__ . '/cache/',
+            'path' => sys_get_temp_dir() . '/cache/',
         ]
     ]
 ];

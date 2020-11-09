@@ -1,10 +1,4 @@
 <?php
-/**
- * Created by PhpStorm.
- * User: f-oris
- * Date: 2019/8/21
- * Time: 4:44 PM
- */
 
 namespace Foris\Easy\Cache\Tests;
 
@@ -21,9 +15,6 @@ use Symfony\Component\Cache\Adapter\MemcachedAdapter;
 
 /**
  * Class CacheTest
- * @package Foris\Easy\Cache\Tests
- * @author  f-oris <us@f-oris.me>
- * @version 1.0.0
  */
 class CacheTest extends TestCase
 {
