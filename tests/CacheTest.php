@@ -81,8 +81,21 @@ class CacheTest extends TestCase
     public function testPutCacheData()
     {
         $cache = $this->cache();
-        $this->assertSame($cache, $cache->set('hit_cache', 'hit_cache'));
-        $this->assertSame($cache, $cache->putMany(['hit_cache' => 'hit_cache']));
+
+        $this->assertFalse($cache->getDriver()->getItem('put_cache')->isHit());
+        $this->assertFalse($cache->getDriver()->getItem('set_cache')->isHit());
+        $this->assertFalse($cache->getDriver()->getItem('many_cache_1')->isHit());
+        $this->assertFalse($cache->getDriver()->getItem('many_cache_2')->isHit());
+
+        $this->assertSame($cache, $cache->put('put_cache', 'put_cache'));
+        $this->assertSame($cache, $cache->set('set_cache', 'set_cache'));
+        $this->assertSame($cache, $cache->putMany(['many_cache_1' => 'many_cache_1', 'many_cache_2' => 'many_cache_2']));
+
+        $this->assertTrue($cache->getDriver()->getItem('put_cache')->isHit());
+        $this->assertTrue($cache->getDriver()->getItem('set_cache')->isHit());
+        $this->assertTrue($cache->getDriver()->getItem('many_cache_1')->isHit());
+        $this->assertTrue($cache->getDriver()->getItem('many_cache_2')->isHit());
+
         return $cache;
     }
 
@@ -90,6 +103,7 @@ class CacheTest extends TestCase
      * Test get data from cache.
      *
      * @param Cache $cache
+     * @return Cache
      * @throws InvalidConfigException
      * @throws RuntimeException
      * @throws \Psr\Cache\InvalidArgumentException
@@ -97,8 +111,9 @@ class CacheTest extends TestCase
      */
     public function testGetCacheData(Cache $cache)
     {
-        $this->assertSame('hit_cache', $cache->get('hit_cache'));
-        $this->assertNull($cache->get('not_hit_cache'));
+        $this->assertSame('put_cache', $cache->get('put_cache'));
+        $this->assertNull($cache->get('not_exist_cache_item'));
+        return $cache;
     }
 
     /**
@@ -112,7 +127,8 @@ class CacheTest extends TestCase
      */
     public function testHasCacheData(Cache $cache)
     {
-        $this->assertTrue($cache->has('hit_cache'));
+        $this->assertTrue($cache->has('put_cache'));
+        $this->assertFalse($cache->has('not_exist_cache_item'));
     }
 
     /**
@@ -126,19 +142,30 @@ class CacheTest extends TestCase
      */
     public function testDeleteCacheData(Cache $cache)
     {
-        $this->assertTrue($cache->delete('hit_cache'));
-        $this->assertTrue($cache->deleteMany(['hit_cache']));
+        $this->assertTrue($cache->delete('put_cache'));
+        $this->assertTrue($cache->deleteMany(['many_cache_1', 'many_cache_2']));
+
+        $this->assertFalse($cache->getDriver()->getItem('put_cache')->isHit());
+        $this->assertFalse($cache->getDriver()->getItem('many_cache_1')->isHit());
+        $this->assertFalse($cache->getDriver()->getItem('many_cache_2')->isHit());
     }
 
     /**
      * Test clear all cache data.
      *
+     * @param Cache $cache
      * @throws InvalidConfigException
      * @throws RuntimeException
+     * @throws \Psr\Cache\InvalidArgumentException
+     * @depends testPutCacheData
      */
-    public function testClearCache()
+    public function testClearCache(Cache $cache)
     {
-        $this->assertTrue($this->cache()->clear());
+        $this->assertTrue($cache->clear());
+        $this->assertFalse($cache->getDriver()->getItem('put_cache')->isHit());
+        $this->assertFalse($cache->getDriver()->getItem('set_cache')->isHit());
+        $this->assertFalse($cache->getDriver()->getItem('many_cache_1')->isHit());
+        $this->assertFalse($cache->getDriver()->getItem('many_cache_2')->isHit());
     }
 
     /**
@@ -150,15 +177,33 @@ class CacheTest extends TestCase
      * @throws \Psr\Cache\InvalidArgumentException
      * @depends testPutCacheData
      */
-    public function testRememberCache(Cache $cache)
+    public function testCacheClosureResult(Cache $cache)
     {
-        $this->assertSame('remember', $cache->remember('not_hit_cache', 1800, function (){
+        $callback = function () {
             return 'remember';
-        }));
+        };
 
-        $cache->put('hit_cache', 'hit_cache');
-        $this->assertSame('hit_cache', $cache->remember('hit_cache', 1800, function (){
+        $this->assertFalse($cache->getDriver()->getItem('closure_result_cache')->isHit());
+        $this->assertSame('remember', $cache->remember('closure_result_cache', 1800, $callback));
+        $this->assertTrue($cache->getDriver()->getItem('closure_result_cache')->isHit());
+    }
+
+    /**
+     * Test replace an exists cache item with closure result.
+     *
+     * @param Cache $cache
+     * @throws InvalidConfigException
+     * @throws RuntimeException
+     * @throws \Psr\Cache\InvalidArgumentException
+     * @depends testGetCacheData
+     */
+    public function testReplaceExistsCacheItemWithClosure(Cache $cache)
+    {
+        $callback = function () {
             return 'remember';
-        }));
+        };
+
+        $cache->put('put_cache', 'put_cache');
+        $this->assertEquals($cache->get('put_cache'), $cache->remember('put_cache', 1800, $callback));
     }
 }
