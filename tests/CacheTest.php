@@ -172,6 +172,7 @@ class CacheTest extends TestCase
      * Test store a closure result into cache-pool.
      *
      * @param Cache $cache
+     * @return Cache
      * @throws InvalidConfigException
      * @throws RuntimeException
      * @throws \Psr\Cache\InvalidArgumentException
@@ -186,6 +187,8 @@ class CacheTest extends TestCase
         $this->assertFalse($cache->getDriver()->getItem('closure_result_cache')->isHit());
         $this->assertSame('remember', $cache->remember('closure_result_cache', 1800, $callback));
         $this->assertTrue($cache->getDriver()->getItem('closure_result_cache')->isHit());
+
+        return $cache;
     }
 
     /**
@@ -195,15 +198,27 @@ class CacheTest extends TestCase
      * @throws InvalidConfigException
      * @throws RuntimeException
      * @throws \Psr\Cache\InvalidArgumentException
-     * @depends testGetCacheData
+     * @depends testCacheClosureResult
      */
     public function testReplaceExistsCacheItemWithClosure(Cache $cache)
     {
         $callback = function () {
-            return 'remember';
+            return 'remember-2';
         };
 
-        $cache->put('put_cache', 'put_cache');
-        $this->assertEquals($cache->get('put_cache'), $cache->remember('put_cache', 1800, $callback));
+        $cacheResult = $cache->get('closure_result_cache');
+        $this->assertEquals($cacheResult, $cache->remember('closure_result_cache', 1800, $callback));
+    }
+
+    /**
+     * Test create cache component without cache configuration.
+     *
+     * @throws InvalidConfigException
+     * @throws RuntimeException
+     */
+    public function testCreateCacheComponentInstanceWithoutConfiguration()
+    {
+        $cache = new Cache();
+        $this->assertInstanceOf(FilesystemAdapter::class, $cache->getDriver());
     }
 }

@@ -242,10 +242,7 @@ class Factory
     protected function arrayCacheAdapterFactory()
     {
         return function (array $config = []) {
-            $serialized = $config['store_serialized'] ?? true;
-            $maxLifetime = $config['max_lifetime'] ?? 0;
-            $maxItems = $config['max_items'] ?? 0;
-            return new ArrayAdapter($this->lifetime(), $serialized, $maxLifetime, $maxItems);
+            return new ArrayAdapter($this->lifetime(), $config['store_serialized'] ?? true);
         };
     }
 }

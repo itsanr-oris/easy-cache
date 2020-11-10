@@ -39,7 +39,25 @@ class Cache
      */
     public function __construct(Factory $factory = null, array $config = [])
     {
-        $this->setDriverFactory($factory)->setConfig($config);
+        $this->setDriverFactory($factory)->setConfig(array_merge($this->defaultConfig(), $config));
+    }
+
+    /**
+     * Gets the default cache configuration.
+     *
+     * @return array
+     */
+    protected function defaultConfig()
+    {
+        return [
+            'default' => 'file',
+            'life_time' => 1800,
+            'drivers' => [
+                'file' => [
+                    'path' => sys_get_temp_dir() . '/cache/',
+                ]
+            ],
+        ];
     }
 
     /**
