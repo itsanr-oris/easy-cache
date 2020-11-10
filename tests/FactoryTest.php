@@ -18,58 +18,13 @@ use Symfony\Component\Cache\Adapter\RedisAdapter;
 class FactoryTest extends TestCase
 {
     /**
-     * Test make a filesystem cache driver instance.
+     * Gets the test cache config.
      *
-     * @throws InvalidConfigException
-     * @throws RuntimeException
+     * @return array
      */
-    public function testMakeFilesystemDriver()
+    protected function config()
     {
-        $factory = new Factory();
-        $this->assertInstanceOf(FilesystemAdapter::class, $factory->make('file', []));
-    }
-
-    /**
-     * Test make a memcache cache driver instance.
-     *
-     * @throws InvalidConfigException
-     * @throws RuntimeException
-     */
-    public function testMakeMemcachedDriver()
-    {
-        $factory = new Factory();
-        $config = [
-            'dsn' => [
-                'memcached://localhost:11211'
-            ]
-        ];
-        $this->assertInstanceOf(MemcachedAdapter::class, $factory->make('memcached', $config));
-    }
-
-    /**
-     * Test make a redis cache driver.
-     *
-     * @throws InvalidConfigException
-     * @throws RuntimeException
-     */
-    public function testMakeRedisDriver()
-    {
-        $factory = new Factory();
-        $config = [
-            'dsn' => 'redis://localhost:6379'
-        ];
-        $this->assertInstanceOf(RedisAdapter::class, $factory->make('redis', $config));
-    }
-
-    /**
-     * Test make a chain cache driver instance.
-     *
-     * @throws InvalidConfigException
-     * @throws RuntimeException
-     */
-    public function testMakeChainDriver()
-    {
-        $config = [
+        return [
             'default' => 'file',
             'life_time' => 1800,
             'drivers' => [
@@ -89,8 +44,53 @@ class FactoryTest extends TestCase
                 ]
             ]
         ];
+    }
 
-        $factory = new Factory($config);
+    /**
+     * Test make a filesystem cache driver instance.
+     *
+     * @throws InvalidConfigException
+     * @throws RuntimeException
+     */
+    public function testMakeFilesystemDriver()
+    {
+        $factory = new Factory($this->config());
+        $this->assertInstanceOf(FilesystemAdapter::class, $factory->make('file'));
+    }
+
+    /**
+     * Test make a memcache cache driver instance.
+     *
+     * @throws InvalidConfigException
+     * @throws RuntimeException
+     */
+    public function testMakeMemcachedDriver()
+    {
+        $factory = new Factory($this->config());
+        $this->assertInstanceOf(MemcachedAdapter::class, $factory->make('memcached'));
+    }
+
+    /**
+     * Test make a redis cache driver.
+     *
+     * @throws InvalidConfigException
+     * @throws RuntimeException
+     */
+    public function testMakeRedisDriver()
+    {
+        $factory = new Factory($this->config());
+        $this->assertInstanceOf(RedisAdapter::class, $factory->make('redis'));
+    }
+
+    /**
+     * Test make a chain cache driver instance.
+     *
+     * @throws InvalidConfigException
+     * @throws RuntimeException
+     */
+    public function testMakeChainDriver()
+    {
+        $factory = new Factory($this->config());
         $this->assertInstanceOf(ChainAdapter::class, $factory->make('stack'));
     }
 

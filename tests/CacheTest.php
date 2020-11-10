@@ -3,15 +3,11 @@
 namespace Foris\Easy\Cache\Tests;
 
 use Foris\Easy\Cache\Cache;
-use Foris\Easy\Cache\Factory;
 use PHPUnit\Framework\TestCase;
 use Foris\Easy\Cache\InvalidConfigException;
 use Foris\Easy\Cache\RuntimeException;
-use Mockery;
-use Psr\Cache\CacheItemInterface;
-use Psr\Cache\CacheItemPoolInterface;
+use Symfony\Component\Cache\Adapter\ArrayAdapter;
 use Symfony\Component\Cache\Adapter\FilesystemAdapter;
-use Symfony\Component\Cache\Adapter\MemcachedAdapter;
 
 /**
  * Class CacheTest
@@ -19,143 +15,64 @@ use Symfony\Component\Cache\Adapter\MemcachedAdapter;
 class CacheTest extends TestCase
 {
     /**
-     * @return Mockery\MockInterface|FilesystemAdapter
+     * Gets the cache configuration.
+     *
+     * @return array
      */
-    protected function mockFilesystemCacheAdapter()
+    protected function config()
     {
-        $adapter = Mockery::mock(FilesystemAdapter::class);
-
-        $hitCache = Mockery::mock(CacheItemInterface::class);
-        $hitCache->shouldReceive('isHit')->andReturnTrue();
-        $hitCache->shouldReceive('set')->andReturn($hitCache);
-        $hitCache->shouldReceive('expiresAfter')->andReturn($hitCache);
-        $hitCache->shouldReceive('get')->andReturn('hit_cache');
-        $adapter->shouldReceive('getItem')->withArgs(['hit_cache'])->andReturn($hitCache);
-
-        $notHitCache = Mockery::mock(CacheItemInterface::class);
-        $notHitCache->shouldReceive('isHit')->andReturnFalse();
-        $notHitCache->shouldReceive('set')->andReturn($hitCache);
-        $notHitCache->shouldReceive('expiresAfter')->andReturn($hitCache);
-        $notHitCache->shouldReceive('get')->andReturnNull();
-        $adapter->shouldReceive('getItem')->withArgs(['not_hit_cache'])->andReturn($notHitCache);
-
-        $adapter->shouldReceive('save')->andReturnTrue();
-        $adapter->shouldReceive('deleteItem')->andReturnTrue();
-        $adapter->shouldReceive('clear')->andReturnTrue();
-
-        return $adapter;
+        return [
+            'default' => 'array',
+            'life_time' => 1800,
+            'drivers' => [
+                'file' => [
+                    'path' => sys_get_temp_dir() . '/cache/',
+                ]
+            ]
+        ];
     }
 
     /**
-     * @return Mockery\MockInterface|MemcachedAdapter
-     */
-    protected function mockMemcachedCacheAdapter()
-    {
-        return Mockery::mock(MemcachedAdapter::class);
-    }
-
-    /**
+     * Gets the cache instance.
+     *
      * @return Cache
      * @throws InvalidConfigException
-     * @throws RuntimeException
      */
     protected function cache()
     {
-        $config = [
-            'default' => 'file',
-
-            'life_time' => 3600,
-
-            'drivers' => [
-                'file' => [
-                    'path' => sys_get_temp_dir() . '/cache/'
-                ],
-
-                'memcached' => [
-                    'dsn' => ['memcached://localhost:11211'],
-                ],
-            ],
-        ];
-
-        $factory = Mockery::mock(Factory::class);
-
-        $factory->shouldReceive('make')->withArgs(
-            function ($driver) {
-                return $driver == 'file';
-            }
-        )->andReturn($this->mockFilesystemCacheAdapter());
-
-        $factory->shouldReceive('make')->withArgs(
-            function ($driver) {
-                return $driver == 'memcached';
-            }
-        )->andReturn($this->mockMemcachedCacheAdapter());
-
-        return new Cache($factory, $config);
+        return new Cache(null, $this->config());
     }
 
     /**
+     * Test gets the default cache driver.
+     *
      * @throws InvalidConfigException
      * @throws RuntimeException
      */
     public function testGetDefaultCacheDriver()
     {
-        $this->assertInstanceOf(CacheItemPoolInterface::class, $this->cache()->getDriver());
+        $cache = $this->cache();
+        $this->assertInstanceOf(ArrayAdapter::class, $cache->getDriver());
+        return $cache;
     }
 
     /**
+     * Test change the cache driver.
+     *
+     * @param Cache $cache
      * @throws InvalidConfigException
      * @throws RuntimeException
+     * @depends testGetDefaultCacheDriver
      */
-    public function testSpecificCacheDriver()
+    public function testChangeTheCacheDriver(Cache $cache)
     {
-        $this->assertInstanceOf(MemcachedAdapter::class, $this->cache()->driver('memcached')->getDriver());
-
-        $this->expectException(InvalidConfigException::class);
-        $this->expectExceptionMessage('No cache driver configuration was found!');
-        $this->cache()->driver('not_exists_driver');
+        $cache->driver('file');
+        $this->assertInstanceOf(FilesystemAdapter::class, $cache->getDriver());
     }
 
     /**
-     * @throws InvalidConfigException
-     * @throws RuntimeException
-     */
-    public function testGetDriverConfig()
-    {
-        $this->assertSame(
-            [
-                'default' => 'file',
-
-                'life_time' => 3600,
-
-                'drivers' => [
-                    'file' => [
-                        'path' => sys_get_temp_dir() . '/cache/'
-                    ],
-
-                    'memcached' => [
-                        'dsn' => ['memcached://localhost:11211'],
-                    ],
-                ],
-            ],
-            $this->cache()->getConfig()
-        );
-
-        $this->assertSame(
-            [
-                'path' => sys_get_temp_dir() . '/cache/',
-                'default' => 'file',
-                'life_time' => 3600,
-            ],
-            $this->cache()->getConfig('file')
-        );
-
-        $this->expectException(InvalidConfigException::class);
-        $this->expectExceptionMessage('No cache driver configuration was found!');
-        $this->cache()->getConfig('not_exists_driver');
-    }
-
-    /**
+     * Test store the cache data.
+     *
      * @return Cache
      * @throws InvalidConfigException
      * @throws RuntimeException
@@ -170,39 +87,52 @@ class CacheTest extends TestCase
     }
 
     /**
+     * Test get data from cache.
+     *
+     * @param Cache $cache
      * @throws InvalidConfigException
      * @throws RuntimeException
      * @throws \Psr\Cache\InvalidArgumentException
+     * @depends testPutCacheData
      */
-    public function testGetCacheData()
+    public function testGetCacheData(Cache $cache)
     {
-        $cache = $this->cache();
         $this->assertSame('hit_cache', $cache->get('hit_cache'));
         $this->assertNull($cache->get('not_hit_cache'));
     }
 
     /**
+     * Test if the cache-pool has the give cache.
+     *
+     * @param Cache $cache
      * @throws InvalidConfigException
      * @throws RuntimeException
      * @throws \Psr\Cache\InvalidArgumentException
+     * @depends testPutCacheData
      */
-    public function testHasCacheData()
+    public function testHasCacheData(Cache $cache)
     {
-        $this->assertTrue($this->cache()->has('hit_cache'));
+        $this->assertTrue($cache->has('hit_cache'));
     }
 
     /**
+     * Test delete a given cache data.
+     *
+     * @param Cache $cache
      * @throws InvalidConfigException
      * @throws RuntimeException
      * @throws \Psr\Cache\InvalidArgumentException
+     * @depends testPutCacheData
      */
-    public function testDeleteCacheData()
+    public function testDeleteCacheData(Cache $cache)
     {
-        $this->assertTrue($this->cache()->delete('hit_cache'));
-        $this->assertTrue($this->cache()->deleteMany(['hit_cache']));
+        $this->assertTrue($cache->delete('hit_cache'));
+        $this->assertTrue($cache->deleteMany(['hit_cache']));
     }
 
     /**
+     * Test clear all cache data.
+     *
      * @throws InvalidConfigException
      * @throws RuntimeException
      */
@@ -212,17 +142,22 @@ class CacheTest extends TestCase
     }
 
     /**
+     * Test store a closure result into cache-pool.
+     *
+     * @param Cache $cache
      * @throws InvalidConfigException
      * @throws RuntimeException
      * @throws \Psr\Cache\InvalidArgumentException
+     * @depends testPutCacheData
      */
-    public function testRememberCache()
+    public function testRememberCache(Cache $cache)
     {
-        $this->assertSame('remember', $this->cache()->remember('not_hit_cache', 1800, function (){
+        $this->assertSame('remember', $cache->remember('not_hit_cache', 1800, function (){
             return 'remember';
         }));
 
-        $this->assertSame('hit_cache',$this->cache()->remember('hit_cache', 1800, function (){
+        $cache->put('hit_cache', 'hit_cache');
+        $this->assertSame('hit_cache', $cache->remember('hit_cache', 1800, function (){
             return 'remember';
         }));
     }
