@@ -1,10 +1,4 @@
 <?php
-/**
- * Created by PhpStorm.
- * User: f-oris
- * Date: 2019/8/21
- * Time: 4:42 PM
- */
 
 namespace Foris\Easy\Cache\Tests;
 
@@ -12,6 +6,7 @@ use Foris\Easy\Cache\Factory;
 use Foris\Easy\Cache\InvalidConfigException;
 use Foris\Easy\Cache\RuntimeException;
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Cache\Adapter\ArrayAdapter;
 use Symfony\Component\Cache\Adapter\ChainAdapter;
 use Symfony\Component\Cache\Adapter\FilesystemAdapter;
 use Symfony\Component\Cache\Adapter\MemcachedAdapter;
@@ -19,61 +14,26 @@ use Symfony\Component\Cache\Adapter\RedisAdapter;
 
 /**
  * Class FactoryTest
- * @package Foris\Easy\Cache\Tests
- * @author  f-oris <us@f-oris.me>
- * @version 1.0.0
  */
 class FactoryTest extends TestCase
 {
     /**
-     * @throws InvalidConfigException
-     * @throws RuntimeException
+     * Gets the test cache config.
+     *
+     * @return array
      */
-    public function testMakeFilesystemDriver()
+    protected function config()
     {
-        $factory = new Factory();
-        $this->assertInstanceOf(FilesystemAdapter::class, $factory->make('file', []));
-    }
-
-    /**
-     * @throws InvalidConfigException
-     * @throws RuntimeException
-     */
-    public function testMakeMemcachedDriver()
-    {
-        $factory = new Factory();
-        $config = [
-            'dsn' => [
-                'memcached://localhost:11211'
-            ]
-        ];
-        $this->assertInstanceOf(MemcachedAdapter::class, $factory->make('memcached', $config));
-    }
-
-    /**
-     * @throws InvalidConfigException
-     * @throws RuntimeException
-     */
-    public function testMakeRedisDriver()
-    {
-        $factory = new Factory();
-        $config = [
-            'dsn' => 'redis://localhost:6379'
-        ];
-        $this->assertInstanceOf(RedisAdapter::class, $factory->make('redis', $config));
-    }
-
-    /**
-     * @throws InvalidConfigException
-     * @throws RuntimeException
-     */
-    public function testMakeChainDriver()
-    {
-        $factory = new Factory();
-        $config = [
-            'drivers' => ['file', 'memcached', 'redis'],
-            'total_drivers' => [
-                'file' => [],
+        return [
+            'default' => 'file',
+            'life_time' => 1800,
+            'drivers' => [
+                'chain' => [
+                    'drivers' => ['file', 'memcached', 'redis'],
+                ],
+                'file' => [
+                    'path' => sys_get_temp_dir() . '/cache/',
+                ],
                 'memcached' => [
                     'dsn' => [
                         'memcached://localhost:11211'
@@ -82,12 +42,61 @@ class FactoryTest extends TestCase
                 'redis' => [
                     'dsn' => 'redis://localhost:6379',
                 ]
-            ],
+            ]
         ];
-        $this->assertInstanceOf(ChainAdapter::class, $factory->make('stack', $config));
     }
 
     /**
+     * Test make a filesystem cache driver instance.
+     *
+     * @throws InvalidConfigException
+     * @throws RuntimeException
+     */
+    public function testMakeFilesystemDriver()
+    {
+        $factory = new Factory($this->config());
+        $this->assertInstanceOf(FilesystemAdapter::class, $factory->make('file'));
+    }
+
+    /**
+     * Test make a memcache cache driver instance.
+     *
+     * @throws InvalidConfigException
+     * @throws RuntimeException
+     */
+    public function testMakeMemcachedDriver()
+    {
+        $factory = new Factory($this->config());
+        $this->assertInstanceOf(MemcachedAdapter::class, $factory->make('memcached'));
+    }
+
+    /**
+     * Test make a redis cache driver.
+     *
+     * @throws InvalidConfigException
+     * @throws RuntimeException
+     */
+    public function testMakeRedisDriver()
+    {
+        $factory = new Factory($this->config());
+        $this->assertInstanceOf(RedisAdapter::class, $factory->make('redis'));
+    }
+
+    /**
+     * Test make a chain cache driver instance.
+     *
+     * @throws InvalidConfigException
+     * @throws RuntimeException
+     */
+    public function testMakeChainDriver()
+    {
+        $factory = new Factory($this->config());
+        $this->assertInstanceOf(ChainAdapter::class, $factory->make('stack'));
+    }
+
+    /**
+     * Test make a chain cache driver instance without available driver.
+     *
      * @throws InvalidConfigException
      * @throws RuntimeException
      */
@@ -101,6 +110,8 @@ class FactoryTest extends TestCase
     }
 
     /**
+     * Test make a not exists driver instance,
+     *
      * @throws InvalidConfigException
      * @throws RuntimeException
      */
@@ -114,6 +125,8 @@ class FactoryTest extends TestCase
     }
 
     /**
+     * Test extend a custom cache driver.
+     *
      * @return Factory
      * @throws InvalidConfigException
      * @throws RuntimeException
@@ -137,6 +150,8 @@ class FactoryTest extends TestCase
     }
 
     /**
+     * Test re-extend a duplicate cache driver.
+     *
      * @param Factory $factory
      * @throws InvalidConfigException
      * @depends     testExtendCustomCacheDriver
@@ -154,6 +169,8 @@ class FactoryTest extends TestCase
     }
 
     /**
+     * Test alias a cache driver.
+     *
      * @param Factory $factory
      * @return Factory
      * @throws RuntimeException
@@ -173,6 +190,8 @@ class FactoryTest extends TestCase
     }
 
     /**
+     * Test alias a cache driver with duplicate name.
+     *
      * @param Factory $factory
      * @throws RuntimeException
      * @depends      testAliasCacheDriver
@@ -180,20 +199,37 @@ class FactoryTest extends TestCase
     public function testAliasDuplicateCacheDriver(Factory $factory)
     {
         $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('Creator alias [extend] already exists!');
+        $this->expectExceptionMessage('Driver factory alias [extend] already exists!');
         $factory->alias('extend-creator', 'extend');
     }
 
     /**
+     * Test alias a not exists cache driver.
+     *
      * @throws InvalidConfigException
      * @throws RuntimeException
      */
     public function testAliasNotExistsCacheDriver()
     {
         $this->expectException(RuntimeException::class);
-        $this->expectExceptionMessage('Creator [not-exists-creator] not exists!');
+        $this->expectExceptionMessage('Driver factory [not-exists-creator] not exists!');
 
         $factory = new Factory();
         $factory->alias('not-exists-creator', 'not-exists');
+    }
+
+    /**
+     * Test make a php array cache driver instance.
+     *
+     * @throws InvalidConfigException
+     * @throws RuntimeException
+     */
+    public function testMakeArrayDriver()
+    {
+        $factory = new Factory();
+        $config = [
+            'max_lifetime' => 1800, 'max_items' => 0
+        ];
+        $this->assertInstanceOf(ArrayAdapter::class, $factory->make('array', $config));
     }
 }

@@ -10,16 +10,22 @@ use Psr\Cache\CacheItemPoolInterface;
 class Cache
 {
     /**
+     * Cache driver factory instance.
+     *
      * @var Factory
      */
     protected $factory;
 
     /**
+     * Cache configuration.
+     *
      * @var array
      */
     protected $config = [];
 
     /**
+     * Cache driver instance.
+     *
      * @var CacheItemPoolInterface
      */
     protected $driver;
@@ -30,18 +36,69 @@ class Cache
      * @param Factory $factory
      * @param array   $config
      * @throws InvalidConfigException
-     * @throws RuntimeException
      */
-    public function __construct(Factory $factory, array $config = [])
+    public function __construct(Factory $factory = null, array $config = [])
     {
-        $this->factory = $factory;
-        $this->config = $config;
-
-        $this->driver($this->config['default']);
+        $this->setDriverFactory($factory)->setConfig(array_merge($this->defaultConfig(), $config));
     }
 
     /**
-     * Set cache driver
+     * Gets the default cache configuration.
+     *
+     * @return array
+     */
+    protected function defaultConfig()
+    {
+        return [
+            'default' => 'file',
+            'life_time' => 1800,
+            'drivers' => [
+                'file' => [
+                    'path' => sys_get_temp_dir() . '/cache/',
+                ]
+            ],
+        ];
+    }
+
+    /**
+     * Sets the cache driver factory.
+     *
+     * @param Factory|null $factory
+     * @return $this
+     */
+    public function setDriverFactory(Factory $factory = null)
+    {
+        $this->factory = $factory;
+        return $this;
+    }
+
+    /**
+     * Gets the cache driver factory.
+     *
+     * @return Factory
+     * @throws InvalidConfigException
+     */
+    public function getDriverFactory()
+    {
+        return empty($this->factory) ? new Factory($this->config) : $this->factory;
+    }
+
+    /**
+     * Sets the cache configuration.
+     *
+     * @param array $config
+     * @return $this
+     * @throws InvalidConfigException
+     */
+    public function setConfig(array $config = [])
+    {
+        $this->config = $config;
+        $this->getDriverFactory()->setConfig($config);
+        return $this;
+    }
+
+    /**
+     * Sets the cache driver.
      *
      * @param string|null $driver
      * @return $this
@@ -50,45 +107,24 @@ class Cache
      */
     public function driver(string $driver = null)
     {
-        if ($driver && !isset($this->config['drivers'][$driver])) {
-            throw new InvalidConfigException('No cache driver configuration was found!');
-        }
-
-        $driver = $driver ?? $this->config['default'];
-        $this->driver = $this->factory->make($driver, $this->getConfig($driver));
+        $this->driver = $this->getDriverFactory()->make($driver);
         return $this;
     }
 
     /**
-     * Get driver instance
+     * Gets the cache driver instance.
      *
      * @return CacheItemPoolInterface
+     * @throws InvalidConfigException
+     * @throws RuntimeException
      */
     public function getDriver()
     {
+        if (empty($this->driver)) {
+            $this->driver = $this->getDriverFactory()->make($this->config['default']);
+        }
+
         return $this->driver;
-    }
-
-    /**
-     * Get cache config
-     *
-     * @param string|null $driver
-     * @return array
-     * @throws InvalidConfigException
-     */
-    public function getConfig(string $driver = null)
-    {
-        if ($driver && !isset($this->config['drivers'][$driver])) {
-            throw new InvalidConfigException('No cache driver configuration was found!');
-        }
-
-        if ($driver === null) {
-            return $this->config;
-        }
-
-        $commonConfig = $this->config;
-        unset($commonConfig['drivers']);
-        return array_merge($this->config['drivers'][$driver], $commonConfig);
     }
 
     /**
@@ -98,13 +134,15 @@ class Cache
      * @param      $value
      * @param null $ttl
      * @return $this
+     * @throws InvalidConfigException
+     * @throws RuntimeException
      * @throws \Psr\Cache\InvalidArgumentException
      */
     public function put($key, $value, $ttl = null)
     {
         $ttl = $ttl ?? $this->config['life_time'];
-        $item = $this->driver->getItem($key)->set($value)->expiresAfter($ttl);
-        $this->driver->save($item);
+        $item = $this->getDriver()->getItem($key)->set($value)->expiresAfter($ttl);
+        $this->getDriver()->save($item);
         return $this;
     }
 
@@ -114,6 +152,8 @@ class Cache
      * @param      $values
      * @param null $ttl
      * @return $this
+     * @throws InvalidConfigException
+     * @throws RuntimeException
      * @throws \Psr\Cache\InvalidArgumentException
      */
     public function putMany($values, $ttl = null)
@@ -132,6 +172,8 @@ class Cache
      * @param      $value
      * @param null $ttl
      * @return Cache
+     * @throws InvalidConfigException
+     * @throws RuntimeException
      * @throws \Psr\Cache\InvalidArgumentException
      */
     public function set($key, $value, $ttl = null)
@@ -144,11 +186,13 @@ class Cache
      *
      * @param $key
      * @return mixed|null
+     * @throws InvalidConfigException
+     * @throws RuntimeException
      * @throws \Psr\Cache\InvalidArgumentException
      */
     public function get($key)
     {
-        $item = $this->driver->getItem($key);
+        $item = $this->getDriver()->getItem($key);
         return $item->isHit() ? $item->get() : null;
     }
 
@@ -159,6 +203,8 @@ class Cache
      * @param          $ttl
      * @param \Closure $callback
      * @return mixed
+     * @throws InvalidConfigException
+     * @throws RuntimeException
      * @throws \Psr\Cache\InvalidArgumentException
      */
     public function remember($key, $ttl, \Closure $callback)
@@ -179,11 +225,13 @@ class Cache
      *
      * @param $key
      * @return bool
+     * @throws InvalidConfigException
+     * @throws RuntimeException
      * @throws \Psr\Cache\InvalidArgumentException
      */
     public function forget($key)
     {
-        return $this->driver->deleteItem($key);
+        return $this->getDriver()->deleteItem($key);
     }
 
     /**
@@ -191,6 +239,8 @@ class Cache
      *
      * @param $key
      * @return bool
+     * @throws InvalidConfigException
+     * @throws RuntimeException
      * @throws \Psr\Cache\InvalidArgumentException
      */
     public function delete($key)
@@ -203,6 +253,8 @@ class Cache
      *
      * @param array $keys
      * @return bool
+     * @throws InvalidConfigException
+     * @throws RuntimeException
      * @throws \Psr\Cache\InvalidArgumentException
      */
     public function deleteMany(array $keys)
@@ -218,16 +270,20 @@ class Cache
      * Flush all cache
      *
      * @return bool
+     * @throws InvalidConfigException
+     * @throws RuntimeException
      */
     public function flush()
     {
-        return $this->driver->clear();
+        return $this->getDriver()->clear();
     }
 
     /**
      * Clear all cache
      *
      * @return bool
+     * @throws InvalidConfigException
+     * @throws RuntimeException
      */
     public function clear()
     {
@@ -239,10 +295,12 @@ class Cache
      *
      * @param $key
      * @return bool
+     * @throws InvalidConfigException
+     * @throws RuntimeException
      * @throws \Psr\Cache\InvalidArgumentException
      */
     public function has($key)
     {
-        return $this->driver->getItem($key)->isHit();
+        return $this->getDriver()->getItem($key)->isHit();
     }
 }
