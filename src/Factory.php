@@ -67,7 +67,7 @@ class Factory
      */
     public function getDriverConfig($driver, $default = [])
     {
-        return $this->config['drivers'][$driver] ?? $default;
+        return isset($this->config['drivers'][$driver]) ? $this->config['drivers'][$driver] : $default;
     }
 
     /**
@@ -77,7 +77,7 @@ class Factory
      */
     protected function lifetime()
     {
-        return $this->config['lifetime'] ?? 3600;
+        return isset($this->config['lifetime']) ? $this->config['lifetime'] : 3600;
     }
 
     /**
@@ -85,9 +85,9 @@ class Factory
      *
      * @return mixed|string
      */
-    protected function namespace()
+    protected function getNamespace()
     {
-        return $this->config['namespace'] ?? 'easy-cache';
+        return isset($this->config['namespace']) ? $this->config['namespace'] : 'easy-cache';
     }
 
     /**
@@ -112,9 +112,9 @@ class Factory
      * @return CacheItemPoolInterface : mixed
      * @throws RuntimeException
      */
-    public function make(string $name, array $config = [])
+    public function make($name, array $config = [])
     {
-        $name = $this->aliases[$name] ?? $name;
+        $name = isset($this->aliases[$name]) ? $this->aliases[$name] : $name;
 
         if (isset($this->factories[$name])) {
             return $this->factories[$name](array_merge($this->getDriverConfig($name), $config));
@@ -132,7 +132,7 @@ class Factory
      * @return $this
      * @throws InvalidConfigException
      */
-    public function extend(callable $factory, string $name, string $alias = null)
+    public function extend(callable $factory, $name, $alias = null)
     {
         if (isset($this->factories[$name]) || isset($this->aliases[$alias])) {
             throw new InvalidConfigException(sprintf('Cache driver [%s] already exists!', $name));
@@ -152,7 +152,7 @@ class Factory
      * @return $this
      * @throws RuntimeException
      */
-    public function alias(string $name, string $alias)
+    public function alias($name, $alias)
     {
         if (!isset($this->factories[$name])) {
             throw new RuntimeException(sprintf('Driver factory [%s] not exists!', $name));
@@ -174,11 +174,8 @@ class Factory
     protected function filesystemCacheAdapterFactory()
     {
         return function (array $config = []) {
-            return new FilesystemAdapter(
-                $this->namespace(),
-                $this->lifetime(),
-                $config['path'] ?? sys_get_temp_dir() . '/easy-cache/'
-            );
+            $directory = isset($config['path']) ? $config['path'] : sys_get_temp_dir() . '/easy-cache/';
+            return new FilesystemAdapter($this->getNamespace(), $this->lifetime(), $directory);
         };
     }
 
@@ -190,9 +187,10 @@ class Factory
     protected function redisCacheAdapterFactory()
     {
         return function (array $config = []) {
+            $options = isset($config['options']) ? $config['options'] : [];
             return new RedisAdapter(
-                RedisAdapter::createConnection($config['dsn'], $config['options'] ?? []),
-                $this->namespace(),
+                RedisAdapter::createConnection($config['dsn'], $options),
+                $this->getNamespace(),
                 $this->lifetime()
             );
         };
@@ -206,9 +204,10 @@ class Factory
     protected function memcachedCacheAdapterFactory()
     {
         return function (array $config = []) {
+            $options = isset($config['options']) ? $config['options'] : [];
             return new MemcachedAdapter(
-                MemcachedAdapter::createConnection($config['dsn'], $config['options'] ?? []),
-                $this->namespace(),
+                MemcachedAdapter::createConnection($config['dsn'], $options),
+                $this->getNamespace(),
                 $this->lifetime()
             );
         };
@@ -242,7 +241,8 @@ class Factory
     protected function arrayCacheAdapterFactory()
     {
         return function (array $config = []) {
-            return new ArrayAdapter($this->lifetime(), $config['store_serialized'] ?? true);
+            $storeSerialized = isset($config['store_serialized']) ? $config['store_serialized'] : true;
+            return new ArrayAdapter($this->lifetime(), $storeSerialized);
         };
     }
 }

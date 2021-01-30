@@ -3,7 +3,6 @@
 namespace Foris\Easy\Cache\Tests;
 
 use Foris\Easy\Cache\Cache;
-use PHPUnit\Framework\TestCase;
 use Foris\Easy\Cache\InvalidConfigException;
 use Foris\Easy\Cache\RuntimeException;
 use Symfony\Component\Cache\Adapter\ArrayAdapter;
