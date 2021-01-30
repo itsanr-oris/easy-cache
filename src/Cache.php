@@ -105,7 +105,7 @@ class Cache
      * @throws InvalidConfigException
      * @throws RuntimeException
      */
-    public function driver(string $driver = null)
+    public function driver($driver = null)
     {
         $this->driver = $this->getDriverFactory()->make($driver);
         return $this;
@@ -140,7 +140,7 @@ class Cache
      */
     public function put($key, $value, $ttl = null)
     {
-        $ttl = $ttl ?? $this->config['life_time'];
+        $ttl = isset($ttl) ? $ttl : $this->config['life_time'];
         $item = $this->getDriver()->getItem($key)->set($value)->expiresAfter($ttl);
         $this->getDriver()->save($item);
         return $this;
