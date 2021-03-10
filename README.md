@@ -9,39 +9,157 @@
 [![Latest Unstable Version](https://poser.pugx.org/f-oris/easy-cache/v/unstable)](//packagist.org/packages/f-oris/easy-cache)
 [![License](https://poser.pugx.org/f-oris/easy-cache/license)](//packagist.org/packages/f-oris/easy-cache)
 
+## 版本说明
+
+|  版本 | php | 备注  |
+|  ---  | ---- | ---- |
+| < 1.0 | >= 5.5 | 非正式版本，后续移除 |
+| < 1.1 | >= 7.1 | 正式版本 |
+| >= 1.1 | >= 5.5 | 正式版本 |
+
+当前最新版本为 `1.1` , 主要变如下：
+
+- [x] 移除`php 7.1`版本限制，更改为`php 5.5`
+- [x] 废弃`Factory`类中`alais`、`getDriverConfig`方法，后续大版本更新时移除
+- [x] 修复使用`file`缓存驱动时，读取不到缓存配置异常
+- [x] 在`Cache`类中增加`extend`方法，用于快速扩展缓存驱动
+- [x] 优化`Cache`类`__construct`函数代码逻辑，支持多种类型参数传入
+
 ## 安装
 
 通过composer引入扩展包
 
 ```bash
-composer require f-oris/easy-cache
+composer require f-oris/easy-cache:^1.1
 ```
 
 ## 配置
 
 参考`config.example.php`文件
 
-## 用法
+## 基础用法
+
+#### 1. 设置缓存
 
 ```php
 <?php
 
-// 基本使用, 默认使用文件缓存驱动，可以在 sys_get_temp_dir() . '/cache/' 目录下找到相关缓存文件
-$cache = new \Foris\Easy\Cache\Cache();
+use Foris\Easy\Cache\Cache;
+
+$config = [
+    // 缓存配置
+];
+$cache = new Cache($config);
+
+/**
+ * 设置单个缓存
+ * 
+ * 注：set方法等同于put方法
+ */
 $cache->set('key', 'value');
-var_dump($cache->has('key')); // true
-var_dump($cache->get('key')); // value
+$cache->put('key', 'value', 3600);
 
-// 指定缓存驱动
-$cache->driver('redis')->set('redis-key', 'redis-value');
-
-// 缓存同时设置过期时间
-$cache->set('key', 'value', 3600);
+/**
+ * 设置多个缓存
+ * 
+ * 注：等价于调用了多次put，分别设置key_1，key_2，缓存时间为3600秒
+ */
+$cache->putMany(['key_1' => 'value_1', 'key_2' => 'value_2'], 3600);
 ```
 
-> 更多用法，参考源码及测试用例代码说明
+#### 2. 判断缓存是否存在
 
-## 扩展自定义缓存驱动
+```php
+<?php
+
+use Foris\Easy\Cache\Cache;
+
+$config = [
+    // 缓存配置
+];
+$cache = new Cache($config);
+
+/**
+ * 缓存存在时，返回true, 不存在时，返回false.
+ */
+$cache->has('key');
+
+```
+
+#### 3. 获取缓存
+
+```php
+<?php
+
+use Foris\Easy\Cache\Cache;
+
+$config = [
+    // 缓存配置
+];
+$cache = new Cache($config);
+
+/**
+ * 获取缓存结果
+ * 
+ * 注：获取不到缓存的情况下，返回null
+ */
+$cache->get('key');
+```
+
+#### 4. 通过闭包设置并获取缓存
+
+```php
+<?php
+
+use Foris\Easy\Cache\Cache;
+
+$config = [
+    // 缓存配置
+];
+$cache = new Cache($config);
+
+/**
+ * 通过闭包函数设置缓存
+ * 
+ * 注：
+ * 1. 等价于将闭包函数的运行结果缓存到key中，缓存时间为3600秒
+ * 2. 缓存没命中的情况下，会执行闭包函数，写入缓存，并返回执行结果，缓存命中的情况下，直接返回缓存结果
+ */
+$cache->remember('key', 3600, function () {
+    return 'value';
+});
+```
+
+#### 5. 删除缓存
+
+```php
+<?php
+
+use Foris\Easy\Cache\Cache;
+
+$config = [
+    // 缓存配置
+];
+$cache = new Cache($config);
+
+/**
+ * 删除指定缓存
+ *
+ * 注：forget等价于delete 
+ */
+$cache->forget('key');
+$cache->delete('key');
+
+/**
+ * 清除所有缓存
+ * 
+ * 注：flush等价于clear
+ */
+$cache->flush();
+$cache->clear();
+```
+
+#### 6. 扩展自定义缓存驱动
 
 ```php
 <?php

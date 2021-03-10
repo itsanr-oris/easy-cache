@@ -46,6 +46,19 @@ class FactoryTest extends TestCase
     }
 
     /**
+     * Test gets the cache driver config.
+     *
+     * @throws InvalidConfigException
+     */
+    public function testGetConfig()
+    {
+        $factory = new Factory($this->config());
+        $this->assertEquals($this->config(), $factory->getConfig());
+        $this->assertEquals($this->config()['drivers']['file'], $factory->getConfig('file'));
+        $this->assertEmpty($factory->getConfig('not_exist_driver'));
+    }
+
+    /**
      * Test make a filesystem cache driver instance.
      *
      * @throws InvalidConfigException
