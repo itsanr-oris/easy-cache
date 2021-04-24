@@ -3,8 +3,10 @@
 namespace Foris\Easy\Cache\Tests;
 
 use Foris\Easy\Cache\Cache;
+use Foris\Easy\Cache\Factory;
 use Foris\Easy\Cache\InvalidConfigException;
 use Foris\Easy\Cache\RuntimeException;
+use Psr\Cache\CacheItemPoolInterface;
 use Symfony\Component\Cache\Adapter\ArrayAdapter;
 use Symfony\Component\Cache\Adapter\FilesystemAdapter;
 
@@ -40,6 +42,41 @@ class CacheTest extends TestCase
     protected function cache()
     {
         return new Cache(null, $this->config());
+    }
+
+    /**
+     * Test gets the cache instance.
+     *
+     * @throws InvalidConfigException
+     */
+    public function testGetCacheInstanceWithDriverFactory()
+    {
+        $factory = \Mockery::mock(Factory::class);
+        $factory->makePartial();
+
+        $cache = new Cache($factory);
+        $this->assertSame($factory, $cache->getDriverFactory());
+    }
+
+    /**
+     * Test gets the cache instance.
+     *
+     * @throws InvalidConfigException
+     */
+    public function testGetCacheInstanceWithConfiguration()
+    {
+        $defaultConfig = [
+            'default' => 'file',
+            'life_time' => 1800,
+            'drivers' => [
+                'file' => [
+                    'path' => sys_get_temp_dir() . '/cache/',
+                ]
+            ],
+        ];
+
+        $cache = new Cache($this->config());
+        $this->assertEquals(array_merge($defaultConfig, $this->config()), $cache->getConfig());
     }
 
     /**
@@ -219,5 +256,23 @@ class CacheTest extends TestCase
     {
         $cache = new Cache();
         $this->assertInstanceOf(FilesystemAdapter::class, $cache->getDriver());
+    }
+
+    /**
+     * Test extend cache driver.
+     *
+     * @throws InvalidConfigException
+     * @throws RuntimeException
+     */
+    public function testExtendCacheDriver()
+    {
+        $cache = new Cache();
+        $driver = \Mockery::mock(CacheItemPoolInterface::class);
+
+        $cache->extend('mock_cache', function () use ($driver) {
+            return $driver;
+        });
+
+        $this->assertSame($driver, $cache->driver('mock_cache')->getDriver());
     }
 }

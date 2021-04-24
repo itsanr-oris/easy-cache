@@ -4,8 +4,10 @@ services:
   - memcached
   - redis-server
 
+dist: trusty
+
 php:
-  - 7.2.0
+- 5.5
 
 branches:
   except:

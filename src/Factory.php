@@ -61,9 +61,23 @@ class Factory
     /**
      * Gets the cache driver configuration.
      *
+     * @param null $driver
+     * @return array
+     */
+    public function getConfig($driver = null)
+    {
+        return $driver === null
+            ? ($this->config)
+            : (isset($this->config['drivers'][$driver]) ? $this->config['drivers'][$driver] : []);
+    }
+
+    /**
+     * Gets the cache driver configuration.
+     *
      * @param       $driver
      * @param array $default
      * @return array
+     * @deprecated
      */
     public function getDriverConfig($driver, $default = [])
     {
@@ -114,13 +128,41 @@ class Factory
      */
     public function make($name, array $config = [])
     {
-        $name = isset($this->aliases[$name]) ? $this->aliases[$name] : $name;
-
-        if (isset($this->factories[$name])) {
-            return $this->factories[$name](array_merge($this->getDriverConfig($name), $config));
+        if ($this->driverExist($name)) {
+            return call_user_func_array($this->getFactory($name), [$config]);
         }
 
         throw new RuntimeException(sprintf('Can not create cache driver [%s]!', $name));
+    }
+
+    /**
+     * Determine if the cache driver exists.
+     *
+     * @param $driver
+     * @return bool
+     */
+    protected function driverExist($driver)
+    {
+        return is_callable($this->getFactory($driver));
+    }
+
+    /**
+     * Gets the cache driver factory.
+     *
+     * @param $driver
+     * @return mixed|null
+     */
+    protected function getFactory($driver)
+    {
+        if (isset($this->aliases[$driver])) {
+            $driver = $this->aliases[$driver];
+        }
+
+        if (!isset($this->factories[$driver]) || !is_callable($this->factories[$driver])) {
+            return null;
+        }
+
+        return $this->factories[$driver];
     }
 
     /**
@@ -134,7 +176,7 @@ class Factory
      */
     public function extend(callable $factory, $name, $alias = null)
     {
-        if (isset($this->factories[$name]) || isset($this->aliases[$alias])) {
+        if ($this->driverExist($name) || $this->driverExist($alias)) {
             throw new InvalidConfigException(sprintf('Cache driver [%s] already exists!', $name));
         }
 
@@ -145,20 +187,21 @@ class Factory
     }
 
     /**
-     * Alias cache driver factory
+     * Alias the cache driver factory
      *
      * @param string $name
      * @param string $alias
      * @return $this
      * @throws RuntimeException
+     * @deprecated
      */
     public function alias($name, $alias)
     {
-        if (!isset($this->factories[$name])) {
+        if (!$this->driverExist($name)) {
             throw new RuntimeException(sprintf('Driver factory [%s] not exists!', $name));
         }
 
-        if (isset($this->aliases[$alias])) {
+        if ($this->driverExist($alias)) {
             throw new RuntimeException(sprintf('Driver factory alias [%s] already exists!', $alias));
         }
 
@@ -174,6 +217,7 @@ class Factory
     protected function filesystemCacheAdapterFactory()
     {
         return function (array $config = []) {
+            $config = array_merge($this->getConfig('file'), $config);
             $directory = isset($config['path']) ? $config['path'] : sys_get_temp_dir() . '/easy-cache/';
             return new FilesystemAdapter($this->getNamespace(), $this->lifetime(), $directory);
         };
@@ -187,7 +231,9 @@ class Factory
     protected function redisCacheAdapterFactory()
     {
         return function (array $config = []) {
+            $config = array_merge($this->getConfig('redis'), $config);
             $options = isset($config['options']) ? $config['options'] : [];
+
             return new RedisAdapter(
                 RedisAdapter::createConnection($config['dsn'], $options),
                 $this->getNamespace(),
@@ -204,7 +250,9 @@ class Factory
     protected function memcachedCacheAdapterFactory()
     {
         return function (array $config = []) {
+            $config = array_merge($this->getConfig('memcached'), $config);
             $options = isset($config['options']) ? $config['options'] : [];
+
             return new MemcachedAdapter(
                 MemcachedAdapter::createConnection($config['dsn'], $options),
                 $this->getNamespace(),
@@ -221,6 +269,8 @@ class Factory
     protected function chainCacheAdapterFactory()
     {
         return function (array $config = []) {
+            $config = array_merge($this->getConfig('chain'), $config);
+
             $adapters = [];
             foreach ($config['drivers'] as $adapter) {
                 $adapters[] = $this->make($adapter);
@@ -241,6 +291,7 @@ class Factory
     protected function arrayCacheAdapterFactory()
     {
         return function (array $config = []) {
+            $config = array_merge($this->getConfig('array'), $config);
             $storeSerialized = isset($config['store_serialized']) ? $config['store_serialized'] : true;
             return new ArrayAdapter($this->lifetime(), $storeSerialized);
         };

@@ -37,9 +37,17 @@ class Cache
      * @param array   $config
      * @throws InvalidConfigException
      */
-    public function __construct(Factory $factory = null, array $config = [])
+    public function __construct($factory = null, $config = [])
     {
-        $this->setDriverFactory($factory)->setConfig(array_merge($this->defaultConfig(), $config));
+        if ($factory instanceof Factory) {
+            $this->setDriverFactory($factory);
+        }
+
+        if (is_array($factory)) {
+            $config = array_merge($factory, $config);
+        }
+
+        $this->setConfig(array_merge($this->defaultConfig(), $config));
     }
 
     /**
@@ -80,7 +88,11 @@ class Cache
      */
     public function getDriverFactory()
     {
-        return empty($this->factory) ? new Factory($this->config) : $this->factory;
+        if (!$this->factory instanceof Factory) {
+            $this->factory = new Factory($this->config);
+        }
+
+        return $this->factory;
     }
 
     /**
@@ -94,6 +106,30 @@ class Cache
     {
         $this->config = $config;
         $this->getDriverFactory()->setConfig($config);
+        return $this;
+    }
+
+    /**
+     * Gets the cache configuration.
+     *
+     * @return array
+     */
+    public function getConfig()
+    {
+        return $this->config;
+    }
+
+    /**
+     * Extend cache driver.
+     *
+     * @param          $name
+     * @param callable $factory
+     * @return Cache
+     * @throws InvalidConfigException
+     */
+    public function extend($name, callable $factory)
+    {
+        $this->getDriverFactory()->extend($factory, $name);
         return $this;
     }
 

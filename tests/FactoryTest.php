@@ -1,4 +1,4 @@
-<?php
+<?php /** @noinspection PhpDeprecationInspection */
 
 namespace Foris\Easy\Cache\Tests;
 
@@ -43,6 +43,19 @@ class FactoryTest extends TestCase
                 ]
             ]
         ];
+    }
+
+    /**
+     * Test gets the cache driver config.
+     *
+     * @throws InvalidConfigException
+     */
+    public function testGetConfig()
+    {
+        $factory = new Factory($this->config());
+        $this->assertEquals($this->config(), $factory->getConfig());
+        $this->assertEquals($this->config()['drivers']['file'], $factory->getConfig('file'));
+        $this->assertEmpty($factory->getConfig('not_exist_driver'));
     }
 
     /**
@@ -102,7 +115,7 @@ class FactoryTest extends TestCase
     public function testMakeChainDriverWithoutAvailableDriver()
     {
         $factory = new Factory();
-        $this->assertThrowException(InvalidConfigException::class, 'Chain adapters can not be empty!');
+        $this->setExpectedException(InvalidConfigException::class, 'Chain adapters can not be empty!');
         $factory->make('stack', ['drivers' => []]);
     }
 
@@ -115,7 +128,7 @@ class FactoryTest extends TestCase
     public function testMakeNotExistsDriver()
     {
         $factory = new Factory();
-        $this->assertThrowException(RuntimeException::class, 'Can not create cache driver [not-exists-driver]!');
+        $this->setExpectedException(RuntimeException::class, 'Can not create cache driver [not-exists-driver]!');
         $factory->make('not-exists-driver', []);
     }
 
@@ -153,7 +166,7 @@ class FactoryTest extends TestCase
      */
     public function testExtendDuplicateCacheDriver(Factory $factory)
     {
-        $this->assertThrowException(InvalidConfigException::class, 'Cache driver [extend-creator] already exists!');
+        $this->setExpectedException(InvalidConfigException::class, 'Cache driver [extend-creator] already exists!');
 
         $callable = function (array $config = []) {
             return $config['config'] . ' 2';
@@ -192,7 +205,7 @@ class FactoryTest extends TestCase
      */
     public function testAliasDuplicateCacheDriver(Factory $factory)
     {
-        $this->assertThrowException(RuntimeException::class, 'Driver factory alias [extend] already exists!');
+        $this->setExpectedException(RuntimeException::class, 'Driver factory alias [extend] already exists!');
         $factory->alias('extend-creator', 'extend');
     }
 
@@ -204,7 +217,7 @@ class FactoryTest extends TestCase
      */
     public function testAliasNotExistsCacheDriver()
     {
-        $this->assertThrowException(RuntimeException::class, 'Driver factory [not-exists-creator] not exists!');
+        $this->setExpectedException(RuntimeException::class, 'Driver factory [not-exists-creator] not exists!');
 
         $factory = new Factory();
         $factory->alias('not-exists-creator', 'not-exists');
