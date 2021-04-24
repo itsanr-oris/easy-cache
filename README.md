@@ -9,28 +9,12 @@
 [![Latest Unstable Version](https://poser.pugx.org/f-oris/easy-cache/v/unstable)](//packagist.org/packages/f-oris/easy-cache)
 [![License](https://poser.pugx.org/f-oris/easy-cache/license)](//packagist.org/packages/f-oris/easy-cache)
 
-## 版本说明
-
-|  版本 | php | 备注  |
-|  ---  | ---- | ---- |
-| < 1.0 | >= 5.5 | 非正式版本，后续移除 |
-| < 1.1 | >= 7.1 | 正式版本 |
-| >= 1.1 | >= 5.5 | 正式版本 |
-
-当前最新版本为 `1.1` , 主要变如下：
-
-- [x] 移除`php 7.1`版本限制，更改为`php 5.5`
-- [x] 废弃`Factory`类中`alais`、`getDriverConfig`方法，后续大版本更新时移除
-- [x] 修复使用`file`缓存驱动时，读取不到缓存配置异常
-- [x] 在`Cache`类中增加`extend`方法，用于快速扩展缓存驱动
-- [x] 优化`Cache`类`__construct`函数代码逻辑，支持多种类型参数传入
-
 ## 安装
 
 通过composer引入扩展包
 
 ```bash
-composer require f-oris/easy-cache:^1.1
+composer require f-oris/easy-cache:^2.0
 ```
 
 ## 配置
